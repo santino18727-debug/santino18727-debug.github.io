@@ -79,6 +79,7 @@ footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
       <div class="mot" id="mot"></div>
       <div class="hint" id="hint"></div>
       <button class="ecouter hidden" id="ecouter">🔊 Écouter</button>
+      <div class="hint hidden" id="msgVoix" style="opacity:1;color:#b00020;font-weight:600"></div>
     </div>
     <button class="flip" id="flip">👀 Retourner</button>
     <div class="rep hidden" id="rep">
@@ -186,14 +187,45 @@ if ("speechSynthesis" in window){
   chercherVoix();
   speechSynthesis.onvoiceschanged = chercherVoix;
 }
+function msgVoix(t){
+  const e = $("msgVoix");
+  e.textContent = t;
+  e.classList.toggle("hidden", !t);
+}
+// Appelé DIRECTEMENT depuis le clic (geste utilisateur exigé par iOS/Android).
 function parler(carte){
-  if (!("speechSynthesis" in window)) { alert("La lecture à voix haute n'est pas disponible sur cet appareil."); return; }
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance((carte.say || carte.de).replace(/…/g, ""));
+  msgVoix("");
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined"){
+    msgVoix("🔇 Ce navigateur ne sait pas lire à voix haute. Essaie avec Chrome (Android) ou Safari (iPhone).");
+    return;
+  }
+  const synth = window.speechSynthesis;
+  chercherVoix();
+  // Sur Chrome Android, cancel() juste avant speak() peut annuler la lecture : on ne coupe que si ça parle déjà.
+  if (synth.speaking || synth.pending) synth.cancel();
+  if (synth.paused) synth.resume();
+  const u = new SpeechSynthesisUtterance((carte.say || carte.de).replace(/…/g, "").trim());
   u.lang = "de-DE";
   if (voixDe) u.voice = voixDe;
   u.rate = 0.85;
-  speechSynthesis.speak(u);
+  u.volume = 1;
+  let demarre = false;
+  u.onstart = () => { demarre = true; msgVoix(""); };
+  u.onerror = ev => {
+    if (ev.error === "canceled" || ev.error === "interrupted") return;
+    msgVoix("🔇 Lecture impossible (" + ev.error + "). Vérifie le volume et que le mode silencieux est coupé.");
+  };
+  synth.speak(u);
+  if (!voixDe && synth.getVoices().length === 0){
+    msgVoix("⏳ Voix en cours de chargement… réessaie dans un instant.");
+  }
+  setTimeout(() => {
+    if (demarre) return;
+    synth.cancel();
+    msgVoix(voixDe
+      ? "🔇 Aucun son. Vérifie le volume / le mode silencieux, puis réessaie."
+      : "🔇 Aucune voix allemande installée sur cet appareil. Android : Réglages › Synthèse vocale › installer l'allemand. iPhone : Réglages › Accessibilité › Contenu énoncé › Voix › Allemand.");
+  }, 2500);
 }
 
 /* ============================ ACCUEIL ============================ */
@@ -235,6 +267,7 @@ function textes(c){
 }
 
 function afficher(){
+  msgVoix("");
   const c = file[0], t = textes(c);
   const txt = retournee ? t.r : t.q;
   $("lang").textContent = retournee ? t.lr : t.lq;
