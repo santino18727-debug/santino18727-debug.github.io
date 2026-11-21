@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e3a5f">
+<title>Cartes d'allemand</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#1e3a5f;color:#fff;
+  display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{flex:1;display:flex;flex-direction:column;max-width:560px;width:100%;margin:0 auto;padding:14px;gap:12px}
+h1{font-size:1.4rem;margin:6px 0 0;text-align:center}
+h2{font-size:1.1rem;margin:14px 0 4px}
+p.sub{margin:0;text-align:center;opacity:.8}
+button{font:inherit;color:inherit;border:0;border-radius:18px;min-height:64px;padding:12px 18px;
+  font-size:1.25rem;font-weight:700;cursor:pointer;touch-action:manipulation}
+button:active{transform:scale(.97)}
+.choix{display:flex;flex-direction:column;gap:10px}
+.deck{background:#2d5a8e;text-align:left}
+.deck small{display:block;font-weight:400;opacity:.8;font-size:.9rem}
+.seg{display:flex;gap:10px}
+.seg button{flex:1;background:#2d5a8e;opacity:.65}
+.seg button.on{background:#f5b301;color:#1b1b1b;opacity:1}
+.go{background:#2ea44f;font-size:1.5rem;min-height:76px}
+.hidden{display:none!important}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:1.05rem;gap:8px}
+.top .quit{min-height:44px;font-size:1rem;padding:6px 14px;background:#2d5a8e}
+.bar{height:10px;border-radius:5px;background:#12263f;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:#2ea44f;transition:width .3s}
+.card{flex:1;min-height:280px;border-radius:24px;background:#fff;color:#1b1b1b;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:22px;gap:14px;cursor:pointer;
+  user-select:none;-webkit-user-select:none;position:relative}
+.card.back{background:#fff3c4}
+.lang{position:absolute;top:12px;left:16px;font-size:.85rem;font-weight:700;opacity:.55;letter-spacing:.05em}
+.mot{font-size:2.2rem;font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.mot.long{font-size:1.7rem}
+.hint{font-size:1rem;opacity:.55}
+.ecouter{background:#2d5a8e;color:#fff;min-height:56px;font-size:1.1rem;padding:8px 20px}
+.rep{display:flex;gap:12px}
+.rep button{flex:1;min-height:76px;font-size:1.3rem}
+.ko{background:#d9534f}
+.ok{background:#2ea44f}
+.flip{background:#f5b301;color:#1b1b1b;min-height:76px;font-size:1.4rem}
+.fin{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:stretch}
+.score{font-size:3rem;font-weight:800}
+.liste{background:#12263f;border-radius:14px;padding:10px 14px;text-align:left;font-size:1rem}
+.liste div{padding:3px 0}
+footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
+</style>
+</head>
+<body>
+<main>
+  <!-- ÉCRAN ACCUEIL -->
+  <section id="accueil" class="choix">
+    <h1>🇩🇪 Cartes d'allemand</h1>
+    <p class="sub">Vocabulaire · Junior 7</p>
+    <h2>1. Choisis la liste</h2>
+    <div id="decks" class="choix"></div>
+    <h2>2. Choisis le sens</h2>
+    <div class="seg">
+      <button id="sens-fd" class="on">Français → Allemand</button>
+      <button id="sens-df">Allemand → Français</button>
+    </div>
+    <button id="go" class="go">▶ C'est parti !</button>
+  </section>
+
+  <!-- ÉCRAN JEU -->
+  <section id="jeu" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:12px">
+    <div class="top">
+      <button class="quit" id="quit">← Menu</button>
+      <span id="compteur"></span>
+      <span id="scoreLive"></span>
+    </div>
+    <div class="bar"><i id="barre"></i></div>
+    <div class="card" id="carte" role="button" tabindex="0" aria-label="Retourner la carte">
+      <span class="lang" id="lang"></span>
+      <div class="mot" id="mot"></div>
+      <div class="hint" id="hint"></div>
+      <button class="ecouter hidden" id="ecouter">🔊 Écouter</button>
+    </div>
+    <button class="flip" id="flip">👀 Retourner</button>
+    <div class="rep hidden" id="rep">
+      <button class="ko" id="ko">🔁 À revoir</button>
+      <button class="ok" id="ok">✅ Je savais</button>
+    </div>
+  </section>
+
+  <!-- ÉCRAN FIN -->
+  <section id="fin" class="fin hidden">
+    <h1>🎉 Bravo !</h1>
+    <div class="score" id="scoreFin"></div>
+    <p class="sub" id="detailFin"></p>
+    <div class="liste hidden" id="listeRates"></div>
+    <button class="go" id="rejouer">🔄 Refaire un tour</button>
+    <button class="deck" id="menu">← Retour au menu</button>
+  </section>
+</main>
+<footer>Fonctionne hors ligne · aucune donnée envoyée</footer>
+
+<script>
+/* ============================================================
+   DONNÉES — pour ajouter le Wortschatz 6 : copier un bloc dans
+   DECKS, changer id/titre/sous, et lister les cartes.
+   Carte = { de, fr, say? }
+     de  : texte allemand affiché
+     fr  : texte français affiché
+     say : (facultatif) texte lu à voix haute si différent de `de`
+   ============================================================ */
+const DECKS = [
+  {
+    id: "ws5",
+    titre: "Wortschatz 5 — Im Winter",
+    sous: "Junior 7",
+    cartes: [
+      { de: "das Jahr, die Jahre", fr: "l'année (+ pluriel)" },
+      { de: "der Monat, die Monate", fr: "le mois (+ pluriel)" },
+      { de: "im …", fr: "en …", say: "im" },
+      { de: "Januar", fr: "janvier" },
+      { de: "Februar", fr: "février" },
+      { de: "März", fr: "mars" },
+      { de: "April", fr: "avril" },
+      { de: "Mai", fr: "mai" },
+      { de: "Juni", fr: "juin" },
+      { de: "Juli", fr: "juillet" },
+      { de: "August", fr: "août" },
+      { de: "September", fr: "septembre" },
+      { de: "Oktober", fr: "octobre" },
+      { de: "November", fr: "novembre" },
+      { de: "Dezember", fr: "décembre" },
+      { de: "Im Januar fahre ich Schlitten.", fr: "En janvier, je fais de la luge." },
+      { de: "im Frühling", fr: "au printemps" },
+      { de: "im Sommer", fr: "en été" },
+      { de: "im Herbst", fr: "en automne" },
+      { de: "im Winter", fr: "en hiver" },
+      { de: "das Wetter", fr: "le temps qu'il fait (la météo)" },
+      { de: "scheinen", fr: "briller" },
+      { de: "Die Sonne scheint.", fr: "Le soleil brille." },
+      { de: "schneien", fr: "neiger" },
+      { de: "Es schneit.", fr: "Il neige." },
+      { de: "regnen", fr: "pleuvoir" },
+      { de: "Es regnet.", fr: "Il pleut." },
+      { de: "die Sommerferien", fr: "les vacances d'été" },
+      { de: "Weihnachten", fr: "Noël" },
+      { de: "Ostern", fr: "Pâques" },
+      { de: "eine Freundin / einen Freund besuchen", fr: "rendre visite à une amie / un ami",
+        say: "eine Freundin besuchen. einen Freund besuchen." },
+      { de: "Du besuchst einen Freund.", fr: "Tu rends visite à un ami." },
+      { de: "Ski / Snowboard / Schlitten fahren", fr: "faire du ski / du snowboard / de la luge",
+        say: "Ski fahren. Snowboard fahren. Schlitten fahren." }
+    ]
+  }
+  /* , { id: "ws6", titre: "Wortschatz 6 — …", sous: "Junior 7", cartes: [ … ] } */
+];
+
+/* ============================ ÉTAT ============================ */
+const $ = id => document.getElementById(id);
+let sens = "fd";            // "fd" = FR→DE, "df" = DE→FR
+let deckSel = DECKS[0].id;
+let file = [];              // file d'attente (cartes restantes)
+let total = 0, premierCoup = 0, retournee = false;
+let rates = new Set();      // cartes ratées au moins une fois
+
+function show(ecran){
+  for (const e of ["accueil","jeu","fin"]) $(e).classList.toggle("hidden", e !== ecran);
+}
+function melanger(a){
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ============================ VOIX ============================ */
+let voixDe = null;
+function chercherVoix(){
+  if (!("speechSynthesis" in window)) return;
+  const vs = speechSynthesis.getVoices();
+  voixDe = vs.find(v => v.lang && v.lang.replace("_","-").toLowerCase() === "de-de")
+        || vs.find(v => v.lang && v.lang.toLowerCase().startsWith("de")) || null;
+}
+if ("speechSynthesis" in window){
+  chercherVoix();
+  speechSynthesis.onvoiceschanged = chercherVoix;
+}
+function parler(carte){
+  if (!("speechSynthesis" in window)) { alert("La lecture à voix haute n'est pas disponible sur cet appareil."); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance((carte.say || carte.de).replace(/…/g, ""));
+  u.lang = "de-DE";
+  if (voixDe) u.voice = voixDe;
+  u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+/* ============================ ACCUEIL ============================ */
+function dessinerDecks(){
+  const box = $("decks");
+  box.innerHTML = "";
+  for (const d of DECKS){
+    const b = document.createElement("button");
+    b.className = "deck";
+    b.innerHTML = "";
+    b.append(d.titre);
+    const s = document.createElement("small");
+    s.textContent = d.cartes.length + " cartes · " + d.sous + (d.id === deckSel ? " · ✔ choisie" : "");
+    b.append(s);
+    b.style.outline = d.id === deckSel ? "4px solid #f5b301" : "none";
+    b.onclick = () => { deckSel = d.id; dessinerDecks(); };
+    box.append(b);
+  }
+}
+$("sens-fd").onclick = () => { sens = "fd"; $("sens-fd").classList.add("on"); $("sens-df").classList.remove("on"); };
+$("sens-df").onclick = () => { sens = "df"; $("sens-df").classList.add("on"); $("sens-fd").classList.remove("on"); };
+$("go").onclick = demarrer;
+$("rejouer").onclick = demarrer;
+$("menu").onclick = () => { speechSynthesis && speechSynthesis.cancel(); show("accueil"); };
+$("quit").onclick = () => { speechSynthesis && speechSynthesis.cancel(); show("accueil"); };
+
+/* ============================ JEU ============================ */
+function demarrer(){
+  const d = DECKS.find(x => x.id === deckSel);
+  file = melanger(d.cartes.map(c => ({ ...c, rate: false })));
+  total = file.length; premierCoup = 0; rates = new Set();
+  show("jeu");
+  prochaine();
+}
+
+function textes(c){
+  return sens === "fd" ? { q: c.fr, r: c.de, lq: "FRANÇAIS", lr: "DEUTSCH" }
+                       : { q: c.de, r: c.fr, lq: "DEUTSCH", lr: "FRANÇAIS" };
+}
+
+function afficher(){
+  const c = file[0], t = textes(c);
+  const txt = retournee ? t.r : t.q;
+  $("lang").textContent = retournee ? t.lr : t.lq;
+  const m = $("mot");
+  m.textContent = txt;
+  m.classList.toggle("long", txt.length > 22);
+  $("carte").classList.toggle("back", retournee);
+  $("hint").textContent = retournee ? "" : "Dis la réponse, puis touche la carte";
+  // L'allemand ne doit pas être lu avant la réponse en mode FR→DE.
+  const allemandVisible = (sens === "df") || retournee;
+  $("ecouter").classList.toggle("hidden", !allemandVisible);
+  $("flip").classList.toggle("hidden", retournee);
+  $("rep").classList.toggle("hidden", !retournee);
+  const fait = total - file.length;
+  $("compteur").textContent = "Reste : " + file.length;
+  $("scoreLive").textContent = "⭐ " + premierCoup + "/" + total;
+  $("barre").style.width = (fait / total * 100) + "%";
+}
+
+function prochaine(){
+  retournee = false;
+  if (file.length === 0) return terminer();
+  afficher();
+}
+
+function retourner(){ if (!retournee){ retournee = true; afficher(); } }
+
+$("carte").onclick = e => { if (e.target.closest("#ecouter")) return; retournee ? (retournee = false, afficher()) : retourner(); };
+$("carte").onkeydown = e => { if (e.key === " " || e.key === "Enter"){ e.preventDefault(); retournee ? (retournee = false, afficher()) : retourner(); } };
+$("flip").onclick = retourner;
+$("ecouter").onclick = e => { e.stopPropagation(); parler(file[0]); };
+
+function repondre(sut){
+  if (!retournee) return;
+  const c = file.shift();
+  if (sut){
+    if (!c.rate) premierCoup++;
+  } else {
+    c.rate = true;
+    rates.add(c.de);
+    file.push(c);               // le raté revient en fin de tour
+  }
+  prochaine();
+}
+$("ok").onclick = () => repondre(true);
+$("ko").onclick = () => repondre(false);
+
+/* ============================ FIN ============================ */
+function terminer(){
+  show("fin");
+  $("scoreFin").textContent = premierCoup + " / " + total;
+  $("detailFin").textContent = rates.size === 0
+    ? "Tout su du premier coup 🏆"
+    : "Sus du premier coup. " + rates.size + " carte" + (rates.size > 1 ? "s" : "") + " à retravailler :";
+  const l = $("listeRates");
+  l.innerHTML = "";
+  l.classList.toggle("hidden", rates.size === 0);
+  for (const de of rates){
+    const c = DECKS.find(x => x.id === deckSel).cartes.find(k => k.de === de);
+    const div = document.createElement("div");
+    div.textContent = c.de + " = " + c.fr;
+    l.append(div);
+  }
+}
+
+dessinerDecks();
+</script>
+</body>
+</html>
