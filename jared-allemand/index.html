@@ -3,9 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1e3a5f">
+<meta name="theme-color" content="#0f2747">
 <title>Cartes d'allemand</title>
 <style>
+/* Tokens : un seul vert (succès), un seul rouge (à revoir), jaune = action primaire + dos de carte,
+   sélection = remplissage clair, focus clavier = anneau blanc. */
+:root{--ok:#17692f;--ko:#b3261e;--jaune:#f5b301;--nuit:#12263f;--bleu:#2d5a8e;--clair:#dbe8f6;--sel:#fff}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#1e3a5f;color:#fff;
@@ -80,28 +83,121 @@ button:active{box-shadow:0 1px 0 rgba(0,0,0,.25);transform:translateY(3px) scale
 .legende{display:flex;gap:14px;justify-content:center;font-size:.85rem;font-weight:700;background:#fff;border-radius:12px;padding:6px 10px;color:#1b1b1b}
 .opt{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);border-radius:14px;padding:12px 14px;font-size:1.05rem}
 .opt input{width:26px;height:26px}
-.badge{display:inline-block;background:#f5b301;color:#1b1b1b;border-radius:10px;padding:1px 10px;margin-left:6px;font-size:.95rem}
+.badge{display:inline-block;background:var(--nuit);color:#fff;border-radius:10px;padding:1px 10px;margin-left:6px;font-size:.95rem}
 @media (prefers-reduced-motion:reduce){body::before,body::after{animation:none}.card.anim{animation:none}}
+
+/* ---- refonte UI/UX : contrastes WCAG AA, cibles >= 48px, swipe, mascotte, récompenses ---- */
+body{background:linear-gradient(180deg,#0f2747 0%,#1e4d82 55%,#2f6aa3 100%) fixed}
+p.sub{opacity:1;color:#dbe8f6;font-size:1.05rem}
+h1{font-size:1.7rem}
+h1:focus{outline:none}
+h2{font-size:1.1rem}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+button{min-height:56px;font-size:1.25rem}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:4px solid #fff!important;outline-offset:3px}
+.top{flex-wrap:wrap}
+.top .quit{min-height:48px;min-width:48px;font-size:1.05rem;padding:6px 16px;background:#2d5a8e}
+.deck small{opacity:1;color:#dbe8f6;font-size:.95rem}
+.seg button{opacity:1;background:#2d5a8e;color:#fff}
+.seg button.on,.deck.on{background:var(--sel);color:var(--nuit)}
+.deck.on small{color:#2f3b4d}
+.seg button.on::before{content:"\2714\00a0"}
+.retour{background:var(--bleu);text-align:center}
+.go{background:var(--ok);color:#fff;font-size:1.5rem;min-height:76px}
+#go{position:sticky;bottom:8px;z-index:3}
+.papabtn{background:var(--nuit);font-size:1.2rem;min-height:56px}
+.ok{background:var(--ok);color:#fff}
+.ko{background:var(--ko);color:#fff}
+.rep button.allume{transform:scale(1.06);box-shadow:0 0 0 5px #fff,0 4px 0 rgba(0,0,0,.25)}
+.bar{height:14px;border-radius:7px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.bar i{background:var(--ok);transition:width .3s}
+.note{background:rgba(0,0,0,.25);border-radius:14px;padding:12px 14px;font-size:1.05rem;font-weight:600}
+.pop{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+#scoreLive{display:inline-block}
+.etoiles svg{width:2.6rem;height:2.6rem;margin:0 .15em;vertical-align:middle;animation:pop .5s ease-out both}
+.etoiles svg:nth-child(2){animation-delay:.25s}.etoiles svg:nth-child(3){animation-delay:.5s}
+.papa .big{border:4px solid #fff;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.opt input{width:48px;height:48px;flex:none;accent-color:var(--ok)}
+.opt{min-height:56px}
+.legende{font-size:.9rem}
+footer{opacity:1;color:#dbe8f6;font-size:.9rem}
+.der{color:#0d47a1}.die{color:#c2185b}.das{color:#17692f}
+.liste .der,.histo .der{color:#8ec1ff}.liste .die,.histo .die{color:#ff9ec7}.liste .das,.histo .das{color:#8fe3a4}
+.liste .der,.liste .die,.liste .das{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:3px}
+.liste div{padding:6px 0;font-size:1.05rem}
+.lang{opacity:1;color:#4a5568;font-size:.9rem}
+.hint{opacity:1;color:#4a5568;font-size:1.05rem}
+.mot{font-size:clamp(2rem,9vw,2.8rem)}
+.mot.long{font-size:clamp(1.5rem,6.5vw,1.9rem)}
+.papa .big small{opacity:1;color:#4a5568;font-size:1rem}
+.ecouter{background:#2d5a8e;color:#fff;min-height:56px;font-size:1.1rem}
+.flip{background:#f5b301;color:#1b1b1b}
+.score{font-size:clamp(3rem,14vw,4.5rem);line-height:1.1}
+#scoreLive,#compteur{font-weight:700}
+
+/* carte : geste et retours */
+.card{touch-action:pan-y;overflow:hidden}
+.card.entree{animation:entree .26s ease-out}
+@keyframes entree{from{transform:translateX(40px);opacity:.2}to{transform:none;opacity:1}}
+.sw{position:absolute;bottom:12px;padding:6px 12px;border-radius:12px;font-weight:800;font-size:1rem;color:#fff;opacity:0;pointer-events:none}
+.sw-l{left:12px;background:var(--ko)}
+.sw-r{right:12px;background:var(--ok)}
+
+/* progression : boîtes Leitner */
+.boites{display:flex;gap:6px}
+.bt{flex:1;min-width:48px;min-height:48px;background:#12263f;border-radius:14px;padding:4px 2px;text-align:center;color:#fff}
+.bt b{display:block;font-size:1.25rem;line-height:1.2}
+.bt span{display:block;font-size:.9rem;color:var(--clair)}
+.bt:nth-child(2){background:#17314f}.bt:nth-child(3){background:#1d3f63}.bt:nth-child(4){background:#255080}.bt:nth-child(5){background:#2d6699}
+
+/* mascotte */
+.mascotte{display:block;margin:0 auto;width:96px;height:96px;font-size:3rem;line-height:96px;text-align:center}
+.mascotte svg{width:100%;height:100%;display:block}
+.mascotte.petite{width:52px;height:52px;margin:0;line-height:52px;font-size:2rem}
+.mascotte.grande{width:120px;height:120px}
+.mascotte .b{display:none}
+.mascotte[data-etat="neutre"] .b-neutre,.mascotte[data-etat="content"] .b-content,.mascotte[data-etat="encourageant"] .b-encourageant,.mascotte[data-etat="fete"] .b-fete{display:inline}
+.mascotte.rebond svg{animation:rebond .4s ease-out}
+@keyframes rebond{0%{transform:none}40%{transform:translateY(-10px) scale(1.06)}100%{transform:none}}
+.etoiles{font-size:2.4rem;letter-spacing:.1em;text-align:center}
+#confettis{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:8}
+#confettis i{position:absolute;top:-20px;width:10px;height:16px;border-radius:2px;opacity:0}
+#confettis.on i{animation:chute 1.6s ease-in forwards}
+@keyframes chute{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:.9;transform:translate(var(--dx),105vh) rotate(540deg)}}
+@media (prefers-reduced-motion:reduce){
+  .card.entree,.card.anim,.mascotte.rebond svg{animation:none}
+  #confettis{display:none}
+  button:active{transform:none}
+  .rep button.allume{transform:none}
+  .bar i{transition:none}
+  .pop,.etoiles svg{animation:none}
+}
 </style>
 </head>
 <body>
 <main>
   <!-- ÉCRAN ACCUEIL -->
   <section id="accueil" class="choix">
+    <span class="mascotte" role="img" aria-label="Bonhomme de neige tranquille" data-etat="neutre">☃️</span>
     <h1>🇩🇪 Cartes d'allemand</h1>
     <p class="sub">Vocabulaire · Junior 7</p>
+    <h2>Tes cartes par boîte</h2>
+    <p class="sub" style="font-size:.95rem">Plus la boîte est à droite, mieux tu connais la carte (j = jours avant de la revoir).</p>
+    <div class="boites" id="boites" role="group" aria-label="Tes cartes par boîte de révision"></div>
     <h2>1. Choisis la liste</h2>
     <div id="decks" class="choix"></div>
     <h2>2. Choisis le sens</h2>
     <div class="seg">
-      <button id="sens-fd" class="on">Français → Allemand</button>
-      <button id="sens-df">Allemand → Français</button>
+      <button id="sens-fd" class="on" aria-pressed="true">Français → Allemand</button>
+      <button id="sens-df" aria-pressed="false">Allemand → Français</button>
     </div>
     <h2>3. Que veux-tu réviser ?</h2>
     <div class="seg">
-      <button id="mode-jour" class="on">📆 Révision du jour<span class="badge" id="nbJour"></span></button>
-      <button id="mode-tout">📚 Toute la liste</button>
+      <button id="mode-jour" class="on" aria-pressed="true">📆 Révision du jour<span class="badge" id="nbJour"></span></button>
+      <button id="mode-tout" aria-pressed="false">📚 Toute la liste</button>
     </div>
+    <p class="note hidden" id="noteJour" role="status"></p>
     <label class="opt"><input type="checkbox" id="auto" checked> 🔊 Lire l'allemand à voix haute quand je retourne la carte</label>
     <div class="legende"><span class="der">der = bleu</span><span class="die">die = rose</span><span class="das">das = vert</span></div>
     <button id="go" class="go">▶ C'est parti !</button>
@@ -110,11 +206,12 @@ button:active{box-shadow:0 1px 0 rgba(0,0,0,.25);transform:translateY(3px) scale
 
   <!-- ÉCRAN PAPA : test de départ (dictée FR → écrit DE sur papier) -->
   <section id="papa" class="papa hidden">
+    <h1 class="vh">Exercice de Papa</h1>
     <div class="top">
       <button class="quit" id="papaQuit">← Menu</button>
       <span id="papaEtape"></span>
     </div>
-    <div class="bar"><i id="papaBarre"></i></div>
+    <div class="bar" role="progressbar" aria-label="Avancement de l'exercice" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="papaBarre"></i></div>
     <div class="big" id="papaMot"></div>
     <div id="papaBoutons" class="choix"></div>
     <div class="histo hidden" id="papaHisto"></div>
@@ -122,13 +219,17 @@ button:active{box-shadow:0 1px 0 rgba(0,0,0,.25);transform:translateY(3px) scale
 
   <!-- ÉCRAN JEU -->
   <section id="jeu" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:12px">
+    <h1 class="vh">Révision en cours</h1>
     <div class="top">
       <button class="quit" id="quit">← Menu</button>
       <span id="compteur"></span>
       <span id="scoreLive"></span>
+      <span class="mascotte petite" role="img" aria-label="Bonhomme de neige tranquille" data-etat="neutre">☃️</span>
     </div>
-    <div class="bar"><i id="barre"></i></div>
-    <div class="card" id="carte" role="button" tabindex="0" aria-label="Retourner la carte">
+    <div class="bar" role="progressbar" aria-label="Avancement du tour" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="barre"></i></div>
+    <div class="card" id="carte">
+      <span class="sw sw-l" id="swL" aria-hidden="true">🔁 À revoir</span>
+      <span class="sw sw-r" id="swR" aria-hidden="true">✅ Je savais</span>
       <span class="lang" id="lang"></span>
       <div class="img hidden" id="img"></div>
       <div class="mot" id="mot"></div>
@@ -144,15 +245,21 @@ button:active{box-shadow:0 1px 0 rgba(0,0,0,.25);transform:translateY(3px) scale
 
   <!-- ÉCRAN FIN -->
   <section id="fin" class="fin hidden">
-    <h1>🎉 Bravo !</h1>
+    <span class="mascotte grande" role="img" aria-label="Bonhomme de neige tranquille" data-etat="neutre">☃️</span>
+    <h1 id="titreFin">🎉 Bravo !</h1>
     <div class="score" id="scoreFin"></div>
+    <div class="etoiles" id="etoiles" role="img"></div>
+    <p class="sub" id="msgFin"></p>
+    <p class="sub" id="serieFin"></p>
     <p class="sub" id="detailFin"></p>
     <div class="liste hidden" id="listeRates"></div>
-    <button class="go" id="rejouer">🔄 Refaire un tour</button>
-    <button class="deck" id="menu">← Retour au menu</button>
+    <button class="go" id="rejouer">▶ Refaire un tour</button>
+    <button class="retour" id="menu">← Retour au menu</button>
   </section>
 </main>
-<div class="hidden" id="msgVoix" style="position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));background:#b00020;color:#fff;padding:12px 14px;border-radius:14px;font-weight:600;z-index:9"></div>
+<div class="vh" id="annonce" aria-live="polite"></div>
+<div id="confettis" aria-hidden="true"></div>
+<div class="hidden" id="msgVoix" role="status" style="position:fixed;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));background:#b00020;color:#fff;padding:12px 14px;border-radius:14px;font-weight:600;z-index:9"></div>
 <footer>Fonctionne hors ligne · aucune donnée envoyée</footer>
 
 <script>
@@ -225,6 +332,7 @@ const imageDe = c => c.img || IMG[c.de] || "";
 /* Article coloré : der = bleu, die = rose, das = vert (aide à retenir le genre). */
 function rendreTexte(el, txt, allemand){
   el.textContent = "";
+  el.lang = allemand ? "de" : "fr";
   if (!allemand){ el.textContent = txt; return; }
   txt.split(", ").forEach((part, i) => {
     if (i) el.append(", ");
@@ -252,7 +360,61 @@ function cartesDues(d){
 function majBadge(){
   const d = DECKS.find(x => x.id === deckSel);
   $("nbJour").textContent = cartesDues(d).length;
+  dessinerBoites();
 }
+const ETIQ = ["Nouveau", "1 j", "3 j", "7 j", "14 j"];
+const ETIQ_LONG = ["nouvelles ou à revoir tout de suite", "boîte 1 jour", "boîte 3 jours", "boîte 7 jours", "boîte 14 jours"];
+function dessinerBoites(){
+  const d = DECKS.find(x => x.id === deckSel), o = lireLeit();
+  const n = ETIQ.map(() => 0);
+  for (const c of d.cartes) n[Math.min(Math.max(etat(o, d.id, c.de).box | 0, 0), n.length - 1)]++;
+  const box = $("boites");
+  box.textContent = "";
+  n.forEach((v, i) => {
+    const t = document.createElement("div"); t.className = "bt";
+    t.setAttribute("role", "img");
+    t.setAttribute("aria-label", v + (v > 1 ? " cartes" : " carte") + ", " + ETIQ_LONG[i]);
+    const b = document.createElement("b"); b.textContent = v;
+    const s = document.createElement("span"); s.textContent = ETIQ[i];
+    t.append(b, s); box.append(t);
+  });
+}
+
+/* Mascotte : bonhomme de neige SVG inline, 4 états (data-etat). */
+const MASCOT_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
+  + '<circle cx="32" cy="47" r="16" fill="#fff" stroke="#9bb7d4" stroke-width="2"/>'
+  + '<circle cx="32" cy="23" r="13" fill="#fff" stroke="#9bb7d4" stroke-width="2"/>'
+  + '<rect x="19" y="9" width="26" height="4" rx="1" fill="#12263f"/><rect x="24" y="1" width="16" height="9" rx="1" fill="#12263f"/>'
+  + '<rect x="20" y="34" width="24" height="5" rx="2" fill="#2d5a8e"/>'
+  + '<g class="b b-neutre b-content b-encourageant" stroke="#6b4a2b" stroke-width="2.5" stroke-linecap="round"><path d="M17 43 L8 50"/><path d="M47 43 L56 50"/></g>'
+  + '<g class="b b-fete" stroke="#6b4a2b" stroke-width="2.5" stroke-linecap="round"><path d="M17 41 L7 31"/><path d="M47 41 L57 31"/></g>'
+  + '<circle cx="27" cy="21" r="1.9" fill="#1b1b1b"/><circle cx="37" cy="21" r="1.9" fill="#1b1b1b"/>'
+  + '<path d="M32 24 L41 26 L32 28 Z" fill="#f57c00"/>'
+  + '<path class="b b-neutre" d="M27 31 Q32 32.5 37 31" fill="none" stroke="#1b1b1b" stroke-width="1.8" stroke-linecap="round"/>'
+  + '<path class="b b-content" d="M26 30 Q32 37 38 30" fill="none" stroke="#1b1b1b" stroke-width="1.8" stroke-linecap="round"/>'
+  + '<g class="b b-encourageant" fill="none" stroke="#1b1b1b" stroke-width="1.8" stroke-linecap="round"><path d="M27 30.5 Q32 34 37 30.5"/><path d="M24 15.5 L30 17"/><path d="M40 15.5 L34 17"/></g>'
+  + '<ellipse class="b b-fete" cx="32" cy="30.5" rx="4" ry="2.5" fill="#7a1f1f"/>'
+  + '</svg>';
+const MASCOT_LABEL = {
+  neutre: "Bonhomme de neige tranquille",
+  content: "Bonhomme de neige content",
+  encourageant: "Bonhomme de neige qui t'encourage",
+  fete: "Bonhomme de neige qui fait la fête"
+};
+function mascotte(e, rebond){
+  document.querySelectorAll(".mascotte").forEach(m => {
+    if (!m.firstElementChild) m.innerHTML = MASCOT_SVG;
+    m.dataset.etat = e;
+    m.setAttribute("aria-label", MASCOT_LABEL[e]);
+    if (rebond && !reduit.matches){ m.classList.remove("rebond"); void m.offsetWidth; m.classList.add("rebond"); }
+  });
+}
+function setBarre(id, pct){
+  const b = $(id);
+  b.style.width = pct + "%";
+  b.parentNode.setAttribute("aria-valuenow", Math.round(pct));
+}
+function annonce(t){ $("annonce").textContent = t; }
 function noterLeit(deckId, de, sut){
   const o = lireLeit();
   o[deckId] = o[deckId] || {};
@@ -271,10 +433,17 @@ let deckSel = DECKS[0].id;
 let file = [];              // file d'attente (cartes restantes)
 let total = 0, premierCoup = 0, retournee = false;
 let rates = new Set();      // cartes ratées au moins une fois
+let serieTour = 0;          // bonnes réponses d'affilée dans le tour
 
 function show(ecran){
   for (const e of ["accueil","jeu","fin","papa"]) $(e).classList.toggle("hidden", e !== ecran);
+  $("noteJour").classList.add("hidden");
+  msgVoix("");
   if (ecran === "accueil") majBadge();
+  if (ecran === "accueil" || ecran === "jeu") mascotte("neutre");
+  window.scrollTo(0, 0);
+  const h = $(ecran).querySelector("h1");
+  if (h){ h.tabIndex = -1; h.focus({ preventScroll: true }); }
 }
 function melanger(a){
   a = a.slice();
@@ -297,11 +466,15 @@ if ("speechSynthesis" in window){
   chercherVoix();
   speechSynthesis.onvoiceschanged = chercherVoix;
 }
+let minuteurMsg = 0;
 function msgVoix(t){
   const e = $("msgVoix");
   e.textContent = t;
   e.classList.toggle("hidden", !t);
+  clearTimeout(minuteurMsg);
+  if (t) minuteurMsg = setTimeout(() => msgVoix(""), 8000);   // disparaît seul ; un tap le ferme aussi
 }
+$("msgVoix").onclick = () => msgVoix("");
 // Appelé DIRECTEMENT depuis le clic (geste utilisateur exigé par iOS/Android).
 function parler(carte){
   msgVoix("");
@@ -344,22 +517,28 @@ function dessinerDecks(){
   box.innerHTML = "";
   for (const d of DECKS){
     const b = document.createElement("button");
-    b.className = "deck";
+    b.className = d.id === deckSel ? "deck on" : "deck";
     b.innerHTML = "";
     b.append(d.titre);
     const s = document.createElement("small");
     s.textContent = d.cartes.length + " cartes · " + d.sous + (d.id === deckSel ? " · ✔ choisie" : "");
     b.append(s);
-    b.style.outline = d.id === deckSel ? "4px solid #f5b301" : "none";
-    b.onclick = () => { deckSel = d.id; dessinerDecks(); };
+    b.setAttribute("aria-pressed", d.id === deckSel);
+    b.onclick = () => { deckSel = d.id; dessinerDecks(); $("decks").children[DECKS.indexOf(d)].focus({ preventScroll: true }); };
     box.append(b);
   }
   majBadge();
 }
-$("mode-jour").onclick = () => { mode = "jour"; $("mode-jour").classList.add("on"); $("mode-tout").classList.remove("on"); };
-$("mode-tout").onclick = () => { mode = "tout"; $("mode-tout").classList.add("on"); $("mode-jour").classList.remove("on"); };
+const effacerNote = () => $("noteJour").classList.add("hidden");
+$("mode-jour").onclick = () => { effacerNote(); mode = "jour"; $("mode-jour").classList.add("on"); $("mode-tout").classList.remove("on"); };
+$("mode-tout").onclick = () => { effacerNote(); mode = "tout"; $("mode-tout").classList.add("on"); $("mode-jour").classList.remove("on"); };
 $("sens-fd").onclick = () => { sens = "fd"; $("sens-fd").classList.add("on"); $("sens-df").classList.remove("on"); };
 $("sens-df").onclick = () => { sens = "df"; $("sens-df").classList.add("on"); $("sens-fd").classList.remove("on"); };
+function syncSeg(){
+  for (const [id, on] of [["sens-fd", sens === "fd"], ["sens-df", sens === "df"], ["mode-jour", mode === "jour"], ["mode-tout", mode === "tout"]])
+    $(id).setAttribute("aria-pressed", on);
+}
+document.addEventListener("click", e => { if (e.target.closest(".seg")) syncSeg(); });
 $("go").onclick = demarrer;
 $("rejouer").onclick = demarrer;
 $("menu").onclick = () => { speechSynthesis && speechSynthesis.cancel(); show("accueil"); };
@@ -374,10 +553,16 @@ function demarrer(){
     // séances courtes : 10 cartes max, les plus en retard (boîte basse) d'abord
     const o = lireLeit();
     base = dues.length ? melanger(dues).sort((a, b) => etat(o, d.id, a.de).box - etat(o, d.id, b.de).box).slice(0, 10) : [];
-    if (!base.length){ msgVoix("🎉 Rien à revoir aujourd'hui ! Reviens demain, ou choisis « Toute la liste »."); return; }
+    if (!base.length){
+      const n = $("noteJour");
+      n.textContent = "🎉 Rien à revoir aujourd'hui ! Reviens demain, ou choisis « Toute la liste ».";
+      n.classList.remove("hidden");
+      n.scrollIntoView({ block: "center", behavior: reduit.matches ? "auto" : "smooth" });
+      return;
+    }
   }
   file = melanger(base.map(c => ({ ...c, rate: false })));
-  total = file.length; premierCoup = 0; rates = new Set();
+  total = file.length; premierCoup = 0; rates = new Set(); serieTour = 0;
   show("jeu");
   prochaine();
 }
@@ -387,7 +572,7 @@ function textes(c){
                        : { q: c.de, r: c.fr, lq: "DEUTSCH", lr: "FRANÇAIS" };
 }
 
-function afficher(){
+function afficher(entree){
   msgVoix("");
   const c = file[0], t = textes(c);
   const txt = retournee ? t.r : t.q;
@@ -403,8 +588,8 @@ function afficher(){
   img.classList.toggle("petit", im.length > 6);
   const carte = $("carte");
   carte.classList.toggle("back", retournee);
-  carte.classList.remove("anim"); void carte.offsetWidth; carte.classList.add("anim");
-  $("hint").textContent = retournee ? "" : "Dis la réponse, puis touche la carte";
+  carte.classList.remove("anim", "entree"); void carte.offsetWidth; carte.classList.add(entree ? "entree" : "anim");
+  $("hint").textContent = retournee ? "👈 À revoir · Je savais 👉" : "Dis la réponse, puis touche la carte";
   // L'allemand ne doit pas être lu avant la réponse en mode FR→DE.
   const allemandVisible = (sens === "df") || retournee;
   $("ecouter").classList.toggle("hidden", !allemandVisible);
@@ -412,25 +597,30 @@ function afficher(){
   $("rep").classList.toggle("hidden", !retournee);
   const fait = total - file.length;
   $("compteur").textContent = "Reste : " + file.length;
-  $("scoreLive").textContent = "⭐ " + premierCoup + "/" + total;
-  $("barre").style.width = (fait / total * 100) + "%";
+  $("scoreLive").textContent = "⭐ " + premierCoup + "/" + total + (serieTour >= 3 ? " 🔥" + serieTour : "");
+  setBarre("barre", fait / total * 100);
+  $("barre").parentNode.setAttribute("aria-valuetext", fait + " cartes sur " + total);
 }
 
 function prochaine(){
   retournee = false;
   if (file.length === 0) return terminer();
-  afficher();
+  afficher(true);
 }
 
 function retourner(){
   if (retournee) return;
   retournee = true; afficher();
+  $("ko").focus({ preventScroll: true });   // le bouton Retourner vient de disparaître : le focus passe aux réponses
   // Voir + entendre + dire = trois canaux. Appel direct dans le geste (exigé par iOS/Android).
   if ($("auto").checked) parler(file[0]);
 }
 
-$("carte").onclick = e => { if (e.target.closest("#ecouter")) return; retournee ? (retournee = false, afficher()) : retourner(); };
-$("carte").onkeydown = e => { if (e.key === " " || e.key === "Enter"){ e.preventDefault(); retournee ? (retournee = false, afficher()) : retourner(); } };
+$("carte").onclick = e => {
+  if (swipeFlag){ swipeFlag = false; return; }
+  if (e.target.closest("#ecouter")) return;
+  if (retournee){ retournee = false; afficher(); $("flip").focus({ preventScroll: true }); } else retourner();
+};
 $("flip").onclick = retourner;
 $("ecouter").onclick = e => { e.stopPropagation(); parler(file[0]); };
 
@@ -438,17 +628,114 @@ function repondre(sut){
   if (!retournee) return;
   const c = file.shift();
   if (sut){
+    serieTour++;
     if (!c.rate){ premierCoup++; noterLeit(deckSel, c.de, true); }
   } else {
+    serieTour = 0;
     if (!c.rate) noterLeit(deckSel, c.de, false);
     c.rate = true;
     rates.add(c.de);
     file.push(c);               // le raté revient en fin de tour
   }
+  const bilan = sut ? "Je savais. Bravo !" : "À revoir : cette carte reviendra à la fin du tour.";
+  annonce(bilan);
+  mascotte(sut ? (serieTour >= 3 ? "fete" : "content") : "encourageant", true);
   prochaine();
+  if (file.length){
+    $("flip").focus({ preventScroll: true });
+    if (sut) pop($("scoreLive"));
+    // La nouvelle question est annoncée (le mot allemand ne l'est pas en voix française).
+    annonce(bilan + (sens === "fd" ? " Question suivante : " + file[0].fr : " Question suivante : un mot allemand, lis la carte."));
+  }
 }
-$("ok").onclick = () => repondre(true);
-$("ko").onclick = () => repondre(false);
+function pop(el){
+  if (reduit.matches) return;
+  el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+}
+// Boutons : la carte répondue sort d'abord (bordure verte ou rouge), puis la suivante arrive.
+$("ok").onclick = () => { if (!sortie && retournee) sortirCarte(true); };
+$("ko").onclick = () => { if (!sortie && retournee) sortirCarte(false); };
+
+/* ---- Swipe sur la carte (Pointer Events) : droite = Je savais, gauche = À revoir ---- */
+const reduit = window.matchMedia("(prefers-reduced-motion: reduce)");
+let swipeFlag = false, sortie = false, glisse = null;
+function majGeste(dx){
+  const p = Math.min(Math.abs(dx) / 120, 1);
+  // Sélection par la bordure (pas de teinte : elle salissait le dos crème de la carte).
+  $("carte").style.borderColor = p > 0.3 ? (dx > 0 ? "var(--ok)" : "var(--ko)") : "";
+  $("swR").style.opacity = dx > 0 ? p : 0;
+  $("swL").style.opacity = dx < 0 ? p : 0;
+  $("ok").classList.toggle("allume", dx > 40);
+  $("ko").classList.toggle("allume", dx < -40);
+}
+function resetGeste(){
+  const c = $("carte");
+  c.style.borderColor = "";
+  $("swR").style.opacity = ""; $("swL").style.opacity = "";
+  $("ok").classList.remove("allume"); $("ko").classList.remove("allume");
+}
+function finirGeste(sut){
+  const c = $("carte");
+  sortie = false;
+  c.style.transition = ""; c.style.transform = ""; c.style.opacity = "";
+  resetGeste();
+  repondre(sut);
+}
+function sortirCarte(sut){
+  const c = $("carte");
+  sortie = true;
+  majGeste(sut ? 120 : -120);              // feedback sur la carte qu'on vient de juger (aussi au tap)
+  if (reduit.matches){ finirGeste(sut); return; }
+  c.style.transition = "transform .22s ease-in, opacity .22s ease-in";
+  c.style.transform = "translateX(" + (sut ? 1 : -1) * window.innerWidth + "px) rotate(" + (sut ? 12 : -12) + "deg)";
+  c.style.opacity = "0";
+  setTimeout(() => finirGeste(sut), 220);
+}
+function retourCentre(){
+  const c = $("carte");
+  c.style.transition = reduit.matches ? "none" : "transform .2s ease-out";
+  c.style.transform = "";
+  resetGeste();
+  setTimeout(() => { c.style.transition = ""; }, 200);
+}
+$("carte").addEventListener("pointerdown", e => {
+  if (!retournee || sortie || (e.pointerType === "mouse" && e.button !== 0) || e.target.closest("#ecouter")) return;
+  glisse = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), drag: false, dx: 0 };
+});
+$("carte").addEventListener("pointermove", e => {
+  if (!glisse || e.pointerId !== glisse.id) return;
+  const dx = e.clientX - glisse.x, dy = e.clientY - glisse.y, c = $("carte");
+  if (!glisse.drag){
+    if (Math.abs(dx) < 10 || Math.abs(dx) <= Math.abs(dy)) return;
+    glisse.drag = true;
+    try { c.setPointerCapture(e.pointerId); } catch (err) {}
+    c.style.transition = "none";
+  }
+  glisse.dx = dx;
+  const rot = reduit.matches ? "" : " rotate(" + Math.max(-12, Math.min(12, dx / 12)) + "deg)";
+  c.style.transform = "translateX(" + dx + "px)" + rot;
+  majGeste(dx);
+});
+function finGlisse(e, annule){
+  const g = glisse;
+  if (!g || e.pointerId !== g.id) return;
+  glisse = null;
+  if (!g.drag) return;
+  swipeFlag = true;                       // évite le clic fantôme qui suit le geste
+  setTimeout(() => { swipeFlag = false; }, 150);
+  const dx = g.dx, adx = Math.abs(dx);
+  const v = adx / Math.max(performance.now() - g.t, 1);
+  const seuil = Math.max(80, $("carte").offsetWidth * 0.25);
+  if (!annule && (adx >= seuil || (v >= 0.5 && adx >= 40))) sortirCarte(dx > 0);
+  else retourCentre();
+}
+$("carte").addEventListener("pointerup", e => finGlisse(e, false));
+$("carte").addEventListener("pointercancel", e => finGlisse(e, true));
+document.addEventListener("keydown", e => {
+  if (!retournee || sortie || e.altKey || e.ctrlKey || e.metaKey || $("jeu").classList.contains("hidden")) return;
+  if (e.key === "ArrowRight"){ e.preventDefault(); sortirCarte(true); }
+  else if (e.key === "ArrowLeft"){ e.preventDefault(); sortirCarte(false); }
+});
 
 /* ============================ FIN ============================ */
 function terminer(){
@@ -463,13 +750,64 @@ function terminer(){
   for (const de of rates){
     const c = DECKS.find(x => x.id === deckSel).cartes.find(k => k.de === de);
     const div = document.createElement("div");
-    div.textContent = c.de + " = " + c.fr;
+    const sp = document.createElement("span");
+    rendreTexte(sp, c.de, true);
+    div.append(sp, " = " + c.fr);
     l.append(div);
   }
+  const ratio = total ? premierCoup / total : 0;
+  const n = ratio === 1 ? 3 : ratio >= 0.7 ? 2 : 1;
+  const et = $("etoiles");
+  const ETOILE = "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z";
+  et.innerHTML = [0, 1, 2].map(i => '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="' + ETOILE + '" '
+    + (i < n ? 'fill="#f5b301" stroke="#f5b301"' : 'fill="none" stroke="#dbe8f6"') + ' stroke-width="1.6" stroke-linejoin="round"/></svg>').join("");
+  $("titreFin").textContent = ratio >= 0.7 ? "🎉 Bravo !" : ratio >= 0.5 ? "👍 Bien joué !" : "💪 Bien travaillé !";
+  et.setAttribute("aria-label", n + " étoile" + (n > 1 ? "s" : "") + " sur 3");
+  const msg = ratio === 1 ? "Parfait, tu es au top !"
+    : ratio >= 0.7 ? "Super travail, continue comme ça !"
+    : ratio >= 0.5 ? "Bien joué ! Un tour de plus et ce sera encore mieux."
+    : "Tu as bien travaillé ! Les cartes à revoir reviendront, tu vas y arriver.";
+  $("msgFin").textContent = msg;
+  const jours = majSerie();
+  $("serieFin").textContent = jours > 1 ? "🔥 " + jours + " jours de suite, bravo !" : "🔥 Premier jour, reviens demain !";
+  mascotte(ratio >= 0.7 ? "fete" : ratio < 0.5 ? "encourageant" : "content", true);
+  annonce("Tour terminé. " + premierCoup + " sur " + total + ". " + msg);
+  if (ratio >= 0.7 && !reduit.matches) confettis();
+}
+const CLE_SERIE = "voc_serie_v1";
+function jourLocal(d){
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function majSerie(){
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(CLE_SERIE)) || {}; } catch (e) {}
+  const auj = jourLocal(new Date()), h = new Date();
+  h.setDate(h.getDate() - 1);
+  if (s.dernier !== auj){
+    s.n = s.dernier === jourLocal(h) ? (s.n || 0) + 1 : 1;
+    s.dernier = auj;
+    try { localStorage.setItem(CLE_SERIE, JSON.stringify(s)); } catch (e) {}
+  }
+  return s.n || 1;
+}
+function confettis(){
+  const c = $("confettis"), cols = ["#f5b301", "#8fe3a4", "#ff9ec7", "#8ec1ff", "#ffffff"];
+  if (!c.children.length){
+    for (let i = 0; i < 24; i++){
+      const s = document.createElement("i");
+      s.style.left = (2 + i * 4) + "%";
+      s.style.background = cols[i % cols.length];
+      s.style.animationDelay = ((i % 6) * 0.05) + "s";
+      s.style.setProperty("--dx", ((i % 7) - 3) * 14 + "px");
+      c.append(s);
+    }
+  }
+  c.classList.remove("on"); void c.offsetWidth; c.classList.add("on");
+  setTimeout(() => c.classList.remove("on"), 2000);
 }
 
 /* ============================ PAPA : EXERCICE DU SOIR ============================
-   Test de départ : 10 mots dictés en français par Papa, Jared écrit en allemand
+   Test de départ : 10 mots dictés en français par Papa, l'enfant écrit en allemand
    sur papier. Papa corrige (juste/faux), le score /10 est enregistré avec la date
    (localStorage de ce téléphone) : c'est le point de départ de la courbe.        */
 const PAPA_N = 10;
@@ -499,10 +837,10 @@ function papaStart(){
 function papaDicter(){
   const n = papaListe.length;
   $("papaEtape").textContent = "Dictée " + (papaI + 1) + "/" + n;
-  $("papaBarre").style.width = (papaI / n * 100) + "%";
+  setBarre("papaBarre", papaI / n * 50);       // dictée = 1re moitié ; la barre ne recule jamais
   const m = $("papaMot"); m.className = "big";
   m.innerHTML = "";
-  const s = document.createElement("small"); s.textContent = "Dicte en français à Jared :";
+  const s = document.createElement("small"); s.textContent = "Dicte en français :";
   m.append(s, papaListe[papaI].fr);
   $("papaBoutons").innerHTML = "";
   btnPapa(papaI + 1 < n ? "Mot suivant ▶" : "Fin de la dictée → correction", "go", () => {
@@ -513,16 +851,18 @@ function papaDicter(){
 function papaCorriger(){
   const n = papaListe.length, c = papaListe[papaI];
   $("papaEtape").textContent = "Correction " + (papaI + 1) + "/" + n + " · " + papaPts + " pt";
-  $("papaBarre").style.width = (papaI / n * 100) + "%";
+  setBarre("papaBarre", 50 + papaI / n * 50);  // correction = 2e moitié
   const m = $("papaMot"); m.className = "big corr";
   m.innerHTML = "";
   const s = document.createElement("small"); s.textContent = c.fr + " =";
-  m.append(s, c.de);
+  const sp = document.createElement("span");
+  rendreTexte(sp, c.de, true);
+  m.append(s, sp);
   $("papaBoutons").innerHTML = "";
   btnPapa("🔊 Écouter", "ecouter", () => parler(c));
   const suite = ok => { if (ok) papaPts++; papaI++; papaI < n ? papaCorriger() : papaFin(); };
   const r = document.createElement("div"); r.className = "rep"; $("papaBoutons").append(r);
-  for (const [t, cl, ok] of [["❌ Faux", "ko", false], ["✅ Juste", "ok", true]]){
+  for (const [t, cl, ok] of [["🔁 À retravailler", "ko", false], ["✅ Juste", "ok", true]]){
     const b = document.createElement("button"); b.className = cl; b.textContent = t;
     b.onclick = () => suite(ok); r.append(b);
   }
@@ -532,11 +872,11 @@ function papaFin(){
   const d = DECKS.find(x => x.id === deckSel);
   const sauve = ecrireScore({ t: Date.now(), liste: d.id, score: papaPts, sur: n });
   $("papaEtape").textContent = "Résultat";
-  $("papaBarre").style.width = "100%";
+  setBarre("papaBarre", 100);
   const m = $("papaMot"); m.className = "big";
   m.textContent = "🎯 " + papaPts + " / " + n;
   $("papaBoutons").innerHTML = "";
-  btnPapa("🏠 Retour au menu", "deck", () => show("accueil"));
+  btnPapa("← Retour au menu", "retour",() => show("accueil"));
   const h = $("papaHisto"); h.classList.remove("hidden"); h.innerHTML = "";
   const titre = document.createElement("div");
   titre.textContent = sauve ? "Point de départ enregistré. Historique (courbe) :"
@@ -556,10 +896,21 @@ function courbe(l){
   const W = 300, H = 90, ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.style.width = "100%";
-  const pts = l.map((x, i) => [10 + i * (W - 20) / (l.length - 1), H - 10 - (x.score / x.sur) * (H - 20)]);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Courbe de tes scores, de 0 à 10. Dernier score : " + l[l.length - 1].score + " sur " + l[l.length - 1].sur + ".");
+  const pts = l.map((x, i) => [30 + i * (W - 40) / (l.length - 1), H - 10 - (x.score / x.sur) * (H - 20)]);
   const pl = document.createElementNS(ns, "polyline");
   pl.setAttribute("points", pts.map(p => p.join(",")).join(" "));
   pl.setAttribute("fill", "none"); pl.setAttribute("stroke", "#f5b301"); pl.setAttribute("stroke-width", "3");
+  for (const [y, t] of [[10, "10"], [H - 10, "0"]]){
+    const g = document.createElementNS(ns, "line");
+    g.setAttribute("x1", 26); g.setAttribute("x2", W - 4); g.setAttribute("y1", y); g.setAttribute("y2", y);
+    g.setAttribute("stroke", "#dbe8f6"); g.setAttribute("stroke-opacity", ".35"); g.setAttribute("stroke-dasharray", "4 4");
+    const tx = document.createElementNS(ns, "text");
+    tx.setAttribute("x", 0); tx.setAttribute("y", y + 5); tx.setAttribute("fill", "#dbe8f6"); tx.setAttribute("font-size", 14);
+    tx.textContent = t;
+    svg.append(g, tx);
+  }
   svg.append(pl);
   for (const p of pts){
     const c = document.createElementNS(ns, "circle");
@@ -572,6 +923,8 @@ $("papaOpen").onclick = papaStart;
 $("papaQuit").onclick = () => { speechSynthesis && speechSynthesis.cancel(); show("accueil"); };
 
 dessinerDecks();
+syncSeg();
+mascotte("neutre");
 </script>
 </body>
 </html>
