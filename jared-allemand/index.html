@@ -56,6 +56,32 @@ button:active{transform:scale(.97)}
 .histo{background:#12263f;border-radius:14px;padding:10px 14px;font-size:1rem}
 .histo div{padding:2px 0}
 footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
+
+/* ---- habillage hiver ---- */
+body{background:linear-gradient(180deg,#0f2747 0%,#1e4d82 55%,#4a86bd 100%) fixed;position:relative;overflow-x:hidden}
+body::before,body::after{content:"";position:fixed;inset:-50% 0 0 0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(circle,#fff 0 2px,transparent 3px),radial-gradient(circle,#fff 0 1.5px,transparent 2.5px),radial-gradient(circle,#fff 0 3px,transparent 4px);
+  background-size:130px 130px,90px 90px,210px 210px;background-position:0 0,40px 60px,90px 20px;
+  opacity:.35;animation:neige 18s linear infinite}
+body::after{background-size:170px 170px,110px 110px,250px 250px;opacity:.25;animation-duration:27s}
+@keyframes neige{to{transform:translateY(50%)}}
+main,footer{position:relative;z-index:1}
+h1{font-size:1.7rem;text-shadow:0 2px 6px rgba(0,0,0,.3)}
+button{box-shadow:0 4px 0 rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.2)}
+button:active{box-shadow:0 1px 0 rgba(0,0,0,.25);transform:translateY(3px) scale(.99)}
+.card{box-shadow:0 10px 30px rgba(0,0,0,.35);border:4px solid #fff;background:linear-gradient(#fff,#eef5fc)}
+.card.back{background:linear-gradient(#fff6cc,#ffe9a0);border-color:#f5b301}
+.card.anim{animation:retourne .28s ease-out}
+@keyframes retourne{from{transform:rotateY(80deg) scale(.96);opacity:.4}to{transform:none;opacity:1}}
+.img{font-size:5.5rem;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.2))}
+.img.petit{font-size:3.6rem}
+.der{color:#1565c0}.die{color:#d81b60}.das{color:#2e9e4f}
+.mot .der,.mot .die,.mot .das,.big .der,.big .die,.big .das{text-decoration:underline;text-decoration-thickness:4px;text-underline-offset:4px}
+.legende{display:flex;gap:14px;justify-content:center;font-size:.85rem;font-weight:700;background:#fff;border-radius:12px;padding:6px 10px;color:#1b1b1b}
+.opt{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);border-radius:14px;padding:12px 14px;font-size:1.05rem}
+.opt input{width:26px;height:26px}
+.badge{display:inline-block;background:#f5b301;color:#1b1b1b;border-radius:10px;padding:1px 10px;margin-left:6px;font-size:.95rem}
+@media (prefers-reduced-motion:reduce){body::before,body::after{animation:none}.card.anim{animation:none}}
 </style>
 </head>
 <body>
@@ -71,6 +97,13 @@ footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
       <button id="sens-fd" class="on">Français → Allemand</button>
       <button id="sens-df">Allemand → Français</button>
     </div>
+    <h2>3. Que veux-tu réviser ?</h2>
+    <div class="seg">
+      <button id="mode-jour" class="on">📆 Révision du jour<span class="badge" id="nbJour"></span></button>
+      <button id="mode-tout">📚 Toute la liste</button>
+    </div>
+    <label class="opt"><input type="checkbox" id="auto" checked> 🔊 Lire l'allemand à voix haute quand je retourne la carte</label>
+    <div class="legende"><span class="der">der = bleu</span><span class="die">die = rose</span><span class="das">das = vert</span></div>
     <button id="go" class="go">▶ C'est parti !</button>
     <button id="papaOpen" class="papabtn">👨 Papa – exercice du soir</button>
   </section>
@@ -97,6 +130,7 @@ footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
     <div class="bar"><i id="barre"></i></div>
     <div class="card" id="carte" role="button" tabindex="0" aria-label="Retourner la carte">
       <span class="lang" id="lang"></span>
+      <div class="img hidden" id="img"></div>
       <div class="mot" id="mot"></div>
       <div class="hint" id="hint"></div>
       <button class="ecouter hidden" id="ecouter">🔊 Écouter</button>
@@ -176,8 +210,62 @@ const DECKS = [
   /* , { id: "ws6", titre: "Wortschatz 6 — …", sous: "Junior 7", cartes: [ … ] } */
 ];
 
+/* Illustrations (emoji : gratuits, hors ligne). Une carte peut aussi avoir un champ `img`. */
+const IMG = {
+  "das Jahr, die Jahre": "📅", "der Monat, die Monate": "🗓️", "im …": "📍",
+  "Januar": "⛄", "Februar": "🎭", "März": "🌱", "April": "☔", "Mai": "🌷", "Juni": "🏖️",
+  "Juli": "☀️", "August": "🍉", "September": "🎒", "Oktober": "🎃", "November": "🌫️", "Dezember": "🎄",
+  "Im Januar fahre ich Schlitten.": "🛷❄️", "im Frühling": "🌸", "im Sommer": "🏖️", "im Herbst": "🍂", "im Winter": "☃️",
+  "das Wetter": "🌦️", "scheinen": "🌟", "Die Sonne scheint.": "☀️😎", "schneien": "🌨️", "Es schneit.": "❄️❄️",
+  "regnen": "🌧️", "Es regnet.": "☔💧", "die Sommerferien": "🏝️", "Weihnachten": "🎅", "Ostern": "🐰🥚",
+  "eine Freundin / einen Freund besuchen": "👭🏠", "Du besuchst einen Freund.": "🧒🤝", "Ski / Snowboard / Schlitten fahren": "⛷️🏂🛷"
+};
+const imageDe = c => c.img || IMG[c.de] || "";
+
+/* Article coloré : der = bleu, die = rose, das = vert (aide à retenir le genre). */
+function rendreTexte(el, txt, allemand){
+  el.textContent = "";
+  if (!allemand){ el.textContent = txt; return; }
+  txt.split(", ").forEach((part, i) => {
+    if (i) el.append(", ");
+    const m = /^(der|die|das) /i.exec(part);
+    if (m){
+      const s = document.createElement("span");
+      s.className = m[1].toLowerCase(); s.textContent = m[1];
+      el.append(s, part.slice(m[1].length));
+    } else el.append(part);
+  });
+}
+
+/* ============================ RÉPÉTITION ESPACÉE (Leitner) ============================
+   Boîte 0 = à revoir tout de suite, puis 1 j, 3 j, 7 j, 14 j. Une carte sue du premier coup
+   monte d'une boîte ; ratée, elle retombe en boîte 0. Stocké sur ce téléphone seulement. */
+const CLE_LEIT = "voc_leitner_v1";
+const JOURS = [0, 1, 3, 7, 14];
+function lireLeit(){ try { return JSON.parse(localStorage.getItem(CLE_LEIT)) || {}; } catch (e) { return {}; } }
+function ecrireLeit(o){ try { localStorage.setItem(CLE_LEIT, JSON.stringify(o)); } catch (e) {} }
+function etat(o, deckId, de){ return (o[deckId] && o[deckId][de]) || { box: 0, due: 0 }; }
+function cartesDues(d){
+  const o = lireLeit(), now = Date.now();
+  return d.cartes.filter(c => etat(o, d.id, c.de).due <= now);
+}
+function majBadge(){
+  const d = DECKS.find(x => x.id === deckSel);
+  $("nbJour").textContent = cartesDues(d).length;
+}
+function noterLeit(deckId, de, sut){
+  const o = lireLeit();
+  o[deckId] = o[deckId] || {};
+  const e = etat(o, deckId, de);
+  if (sut){ e.box = Math.min(e.box + 1, JOURS.length - 1); e.due = Date.now() + JOURS[e.box] * 86400000; }
+  else { e.box = 0; e.due = 0; }
+  o[deckId][de] = e;
+  ecrireLeit(o);
+}
+
 /* ============================ ÉTAT ============================ */
 const $ = id => document.getElementById(id);
+let mode = "jour";          // "jour" = révision du jour (≤10 cartes dues), "tout" = toute la liste
 let sens = "fd";            // "fd" = FR→DE, "df" = DE→FR
 let deckSel = DECKS[0].id;
 let file = [];              // file d'attente (cartes restantes)
@@ -186,6 +274,7 @@ let rates = new Set();      // cartes ratées au moins une fois
 
 function show(ecran){
   for (const e of ["accueil","jeu","fin","papa"]) $(e).classList.toggle("hidden", e !== ecran);
+  if (ecran === "accueil") majBadge();
 }
 function melanger(a){
   a = a.slice();
@@ -265,7 +354,10 @@ function dessinerDecks(){
     b.onclick = () => { deckSel = d.id; dessinerDecks(); };
     box.append(b);
   }
+  majBadge();
 }
+$("mode-jour").onclick = () => { mode = "jour"; $("mode-jour").classList.add("on"); $("mode-tout").classList.remove("on"); };
+$("mode-tout").onclick = () => { mode = "tout"; $("mode-tout").classList.add("on"); $("mode-jour").classList.remove("on"); };
 $("sens-fd").onclick = () => { sens = "fd"; $("sens-fd").classList.add("on"); $("sens-df").classList.remove("on"); };
 $("sens-df").onclick = () => { sens = "df"; $("sens-df").classList.add("on"); $("sens-fd").classList.remove("on"); };
 $("go").onclick = demarrer;
@@ -276,7 +368,15 @@ $("quit").onclick = () => { speechSynthesis && speechSynthesis.cancel(); show("a
 /* ============================ JEU ============================ */
 function demarrer(){
   const d = DECKS.find(x => x.id === deckSel);
-  file = melanger(d.cartes.map(c => ({ ...c, rate: false })));
+  let base = d.cartes;
+  if (mode === "jour"){
+    const dues = cartesDues(d);
+    // séances courtes : 10 cartes max, les plus en retard (boîte basse) d'abord
+    const o = lireLeit();
+    base = dues.length ? melanger(dues).sort((a, b) => etat(o, d.id, a.de).box - etat(o, d.id, b.de).box).slice(0, 10) : [];
+    if (!base.length){ msgVoix("🎉 Rien à revoir aujourd'hui ! Reviens demain, ou choisis « Toute la liste »."); return; }
+  }
+  file = melanger(base.map(c => ({ ...c, rate: false })));
   total = file.length; premierCoup = 0; rates = new Set();
   show("jeu");
   prochaine();
@@ -293,9 +393,17 @@ function afficher(){
   const txt = retournee ? t.r : t.q;
   $("lang").textContent = retournee ? t.lr : t.lq;
   const m = $("mot");
-  m.textContent = txt;
+  const estDe = retournee ? sens === "fd" : sens === "df";
+  rendreTexte(m, txt, estDe);
   m.classList.toggle("long", txt.length > 22);
-  $("carte").classList.toggle("back", retournee);
+  // Image : toujours sur la réponse ; sur la question seulement FR→DE (elle aide à trouver le mot allemand).
+  const im = imageDe(c), img = $("img");
+  img.textContent = im;
+  img.classList.toggle("hidden", !im || !(retournee || sens === "fd"));
+  img.classList.toggle("petit", im.length > 6);
+  const carte = $("carte");
+  carte.classList.toggle("back", retournee);
+  carte.classList.remove("anim"); void carte.offsetWidth; carte.classList.add("anim");
   $("hint").textContent = retournee ? "" : "Dis la réponse, puis touche la carte";
   // L'allemand ne doit pas être lu avant la réponse en mode FR→DE.
   const allemandVisible = (sens === "df") || retournee;
@@ -314,7 +422,12 @@ function prochaine(){
   afficher();
 }
 
-function retourner(){ if (!retournee){ retournee = true; afficher(); } }
+function retourner(){
+  if (retournee) return;
+  retournee = true; afficher();
+  // Voir + entendre + dire = trois canaux. Appel direct dans le geste (exigé par iOS/Android).
+  if ($("auto").checked) parler(file[0]);
+}
 
 $("carte").onclick = e => { if (e.target.closest("#ecouter")) return; retournee ? (retournee = false, afficher()) : retourner(); };
 $("carte").onkeydown = e => { if (e.key === " " || e.key === "Enter"){ e.preventDefault(); retournee ? (retournee = false, afficher()) : retourner(); } };
@@ -325,8 +438,9 @@ function repondre(sut){
   if (!retournee) return;
   const c = file.shift();
   if (sut){
-    if (!c.rate) premierCoup++;
+    if (!c.rate){ premierCoup++; noterLeit(deckSel, c.de, true); }
   } else {
+    if (!c.rate) noterLeit(deckSel, c.de, false);
     c.rate = true;
     rates.add(c.de);
     file.push(c);               // le raté revient en fin de tour
