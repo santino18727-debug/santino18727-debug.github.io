@@ -47,6 +47,14 @@ button:active{transform:scale(.97)}
 .score{font-size:3rem;font-weight:800}
 .liste{background:#12263f;border-radius:14px;padding:10px 14px;text-align:left;font-size:1rem}
 .liste div{padding:3px 0}
+.papabtn{background:#7b4fa3;font-size:1.2rem}
+.papa{display:flex;flex-direction:column;gap:12px;flex:1}
+.papa .big{font-size:2.6rem;font-weight:800;text-align:center;background:#fff;color:#1b1b1b;border-radius:24px;
+  padding:34px 14px;overflow-wrap:anywhere}
+.papa .big.corr{font-size:1.8rem;background:#fff3c4}
+.papa .big small{display:block;font-size:1rem;font-weight:600;opacity:.6;margin-bottom:6px}
+.histo{background:#12263f;border-radius:14px;padding:10px 14px;font-size:1rem}
+.histo div{padding:2px 0}
 footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
 </style>
 </head>
@@ -64,6 +72,19 @@ footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
       <button id="sens-df">Allemand → Français</button>
     </div>
     <button id="go" class="go">▶ C'est parti !</button>
+    <button id="papaOpen" class="papabtn">👨 Papa – exercice du soir</button>
+  </section>
+
+  <!-- ÉCRAN PAPA : test de départ (dictée FR → écrit DE sur papier) -->
+  <section id="papa" class="papa hidden">
+    <div class="top">
+      <button class="quit" id="papaQuit">← Menu</button>
+      <span id="papaEtape"></span>
+    </div>
+    <div class="bar"><i id="papaBarre"></i></div>
+    <div class="big" id="papaMot"></div>
+    <div id="papaBoutons" class="choix"></div>
+    <div class="histo hidden" id="papaHisto"></div>
   </section>
 
   <!-- ÉCRAN JEU -->
@@ -79,7 +100,6 @@ footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
       <div class="mot" id="mot"></div>
       <div class="hint" id="hint"></div>
       <button class="ecouter hidden" id="ecouter">🔊 Écouter</button>
-      <div class="hint hidden" id="msgVoix" style="opacity:1;color:#b00020;font-weight:600"></div>
     </div>
     <button class="flip" id="flip">👀 Retourner</button>
     <div class="rep hidden" id="rep">
@@ -98,6 +118,7 @@ footer{text-align:center;font-size:.75rem;opacity:.5;padding:6px}
     <button class="deck" id="menu">← Retour au menu</button>
   </section>
 </main>
+<div class="hidden" id="msgVoix" style="position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));background:#b00020;color:#fff;padding:12px 14px;border-radius:14px;font-weight:600;z-index:9"></div>
 <footer>Fonctionne hors ligne · aucune donnée envoyée</footer>
 
 <script>
@@ -164,7 +185,7 @@ let total = 0, premierCoup = 0, retournee = false;
 let rates = new Set();      // cartes ratées au moins une fois
 
 function show(ecran){
-  for (const e of ["accueil","jeu","fin"]) $(e).classList.toggle("hidden", e !== ecran);
+  for (const e of ["accueil","jeu","fin","papa"]) $(e).classList.toggle("hidden", e !== ecran);
 }
 function melanger(a){
   a = a.slice();
@@ -332,6 +353,109 @@ function terminer(){
     l.append(div);
   }
 }
+
+/* ============================ PAPA : EXERCICE DU SOIR ============================
+   Test de départ : 10 mots dictés en français par Papa, Jared écrit en allemand
+   sur papier. Papa corrige (juste/faux), le score /10 est enregistré avec la date
+   (localStorage de ce téléphone) : c'est le point de départ de la courbe.        */
+const PAPA_N = 10;
+const CLE = "voc_papa_scores";
+let papaListe = [], papaI = 0, papaPts = 0;
+
+function lireScores(){ try { return JSON.parse(localStorage.getItem(CLE)) || []; } catch (e) { return []; } }
+function ecrireScore(s){
+  const l = lireScores(); l.push(s);
+  try { localStorage.setItem(CLE, JSON.stringify(l)); return true; } catch (e) { return false; }
+}
+function btnPapa(texte, classe, fn){
+  const b = document.createElement("button");
+  b.className = classe; b.textContent = texte; b.onclick = fn;
+  $("papaBoutons").append(b);
+}
+function papaStart(){
+  const d = DECKS.find(x => x.id === deckSel);
+  // mots seuls : pas de phrases, pas de « … », pas de variantes avec « / »
+  const mots = d.cartes.filter(c => !/[.…\/]/.test(c.de));
+  papaListe = melanger(mots).slice(0, PAPA_N);
+  papaI = 0; papaPts = 0;
+  $("papaHisto").classList.add("hidden");
+  show("papa");
+  papaDicter();
+}
+function papaDicter(){
+  const n = papaListe.length;
+  $("papaEtape").textContent = "Dictée " + (papaI + 1) + "/" + n;
+  $("papaBarre").style.width = (papaI / n * 100) + "%";
+  const m = $("papaMot"); m.className = "big";
+  m.innerHTML = "";
+  const s = document.createElement("small"); s.textContent = "Dicte en français à Jared :";
+  m.append(s, papaListe[papaI].fr);
+  $("papaBoutons").innerHTML = "";
+  btnPapa(papaI + 1 < n ? "Mot suivant ▶" : "Fin de la dictée → correction", "go", () => {
+    papaI++;
+    if (papaI < n) papaDicter(); else { papaI = 0; papaCorriger(); }
+  });
+}
+function papaCorriger(){
+  const n = papaListe.length, c = papaListe[papaI];
+  $("papaEtape").textContent = "Correction " + (papaI + 1) + "/" + n + " · " + papaPts + " pt";
+  $("papaBarre").style.width = (papaI / n * 100) + "%";
+  const m = $("papaMot"); m.className = "big corr";
+  m.innerHTML = "";
+  const s = document.createElement("small"); s.textContent = c.fr + " =";
+  m.append(s, c.de);
+  $("papaBoutons").innerHTML = "";
+  btnPapa("🔊 Écouter", "ecouter", () => parler(c));
+  const suite = ok => { if (ok) papaPts++; papaI++; papaI < n ? papaCorriger() : papaFin(); };
+  const r = document.createElement("div"); r.className = "rep"; $("papaBoutons").append(r);
+  for (const [t, cl, ok] of [["❌ Faux", "ko", false], ["✅ Juste", "ok", true]]){
+    const b = document.createElement("button"); b.className = cl; b.textContent = t;
+    b.onclick = () => suite(ok); r.append(b);
+  }
+}
+function papaFin(){
+  const n = papaListe.length;
+  const d = DECKS.find(x => x.id === deckSel);
+  const sauve = ecrireScore({ t: Date.now(), liste: d.id, score: papaPts, sur: n });
+  $("papaEtape").textContent = "Résultat";
+  $("papaBarre").style.width = "100%";
+  const m = $("papaMot"); m.className = "big";
+  m.textContent = "🎯 " + papaPts + " / " + n;
+  $("papaBoutons").innerHTML = "";
+  btnPapa("🏠 Retour au menu", "deck", () => show("accueil"));
+  const h = $("papaHisto"); h.classList.remove("hidden"); h.innerHTML = "";
+  const titre = document.createElement("div");
+  titre.textContent = sauve ? "Point de départ enregistré. Historique (courbe) :"
+                            : "⚠️ Score non enregistré (navigation privée ?). À noter à la main.";
+  h.append(titre);
+  const l = lireScores().filter(x => x.liste === d.id);
+  if (l.length > 1) h.append(courbe(l));
+  for (const x of l.slice(-8)){
+    const div = document.createElement("div");
+    div.textContent = new Date(x.t).toLocaleString("fr-CH", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })
+      + " — " + x.score + "/" + x.sur;
+    h.append(div);
+  }
+}
+function courbe(l){
+  l = l.slice(-12);
+  const W = 300, H = 90, ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.style.width = "100%";
+  const pts = l.map((x, i) => [10 + i * (W - 20) / (l.length - 1), H - 10 - (x.score / x.sur) * (H - 20)]);
+  const pl = document.createElementNS(ns, "polyline");
+  pl.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+  pl.setAttribute("fill", "none"); pl.setAttribute("stroke", "#f5b301"); pl.setAttribute("stroke-width", "3");
+  svg.append(pl);
+  for (const p of pts){
+    const c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]); c.setAttribute("r", 4); c.setAttribute("fill", "#fff");
+    svg.append(c);
+  }
+  return svg;
+}
+$("papaOpen").onclick = papaStart;
+$("papaQuit").onclick = () => { speechSynthesis && speechSynthesis.cancel(); show("accueil"); };
 
 dessinerDecks();
 </script>
